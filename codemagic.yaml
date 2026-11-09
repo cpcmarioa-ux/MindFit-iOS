@@ -21,3 +21,30 @@ workflows:
             CODE_SIGNING_ALLOWED=NO
     artifacts:
       - artifacts/*.xcresult
+  internal-testflight:
+    name: MindFit - TestFlight interno
+    instance_type: mac_mini_m2
+    max_build_duration: 35
+    integrations:
+      app_store_connect: MindFit TestFlight
+    environment:
+      xcode: 27.1
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.easyfit.mindfit
+    scripts:
+      - name: Preparar y firmar la versión para iPhone
+        script: |
+          set -euo pipefail
+          command -v xcodegen >/dev/null || brew install xcodegen
+          sed -i '' "s/CURRENT_PROJECT_VERSION: \"1\"/CURRENT_PROJECT_VERSION: \"$PROJECT_BUILD_NUMBER\"/" project.yml
+          xcodegen generate
+          xcode-project use-profiles
+          xcode-project build-ipa --project MindFit.xcodeproj --scheme MindFit
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
+        submit_to_app_store: false
