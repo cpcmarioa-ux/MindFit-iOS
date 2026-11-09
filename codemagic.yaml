@@ -1,4 +1,27 @@
 workflows:
+  store-screenshot:
+    name: Captura de MindFit para App Store
+    instance_type: mac_mini_m2
+    max_build_duration: 25
+    environment:
+      xcode: 27.1
+    scripts:
+      - name: Capturar la demo en un iPhone con Dynamic Island
+        script: |
+          set -euo pipefail
+          command -v xcodegen >/dev/null || brew install xcodegen
+          xcodegen generate
+          device=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; print(next(d["udid"] for devices in json.load(sys.stdin)["devices"].values() for d in devices if d["name"] in ("iPhone 17", "iPhone 16 Pro", "iPhone 16", "iPhone 15")))')
+          xcrun simctl bootstatus "$device" -b
+          xcodebuild build -project MindFit.xcodeproj -scheme MindFit -destination "id=$device" -configuration Debug -derivedDataPath build CODE_SIGNING_ALLOWED=NO
+          xcrun simctl install "$device" build/Build/Products/Debug-iphonesimulator/MindFit.app
+          xcrun simctl status_bar "$device" override --time 9:41
+          xcrun simctl launch "$device" com.easyfit.mindfit --demo -AppleLanguages '(es)' -AppleLocale es_MX
+          sleep 25
+          mkdir -p artifacts
+          xcrun simctl io "$device" screenshot artifacts/MindFit-demo.png
+    artifacts:
+      - artifacts/MindFit-demo.png
   duo-simulator:
     name: MindFit - iPhone Duo
     instance_type: mac_mini_m2
